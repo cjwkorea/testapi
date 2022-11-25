@@ -1,7 +1,12 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from fastapi.responses import JSONResponse
+from databases import Database
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.encoders import jsonable_encoder
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+
+
+# https://apis.data.go.kr/6260000/AttractionService/getAttractionKr?serviceKey=L4O6Jd5locofQV0Sa674EwMQ4GyHi380DNlzkWVMQLw8O2LvzNMvBKe1RxTj4jssgmQKPrDvinJFtSOIs9KmbA%3D%3D&pageNo=1&numOfRows=10&resultType=json
 
 
 class ResponseDTO(BaseModel):
@@ -18,6 +23,21 @@ class Cat(BaseModel):
 app = FastAPI()
 
 
+origins = [
+    "http://127.0.0.1:5500",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+database = Database("sqlite:///C:\programing\sqllite\hr")
+
+
 @app.get("/first/{id}")
 async def root(id: int):
     return {"message": "Hello World", "id": id}
@@ -25,7 +45,6 @@ async def root(id: int):
 
 @app.get("/second")
 async def second(skip: int = 0, limit: int = 10):
-    # (skip: int = 0, limit: int = 10) 값을 보내지않아도 나오는 기본값
     return {"skip": skip, "limit": limit}
 
 
@@ -42,4 +61,27 @@ async def error():
 
 @app.get("/error1")
 async def error1():
-    raise HTTPException(status_code=404, detail={"message": "item not found"})
+    raise HTTPException(status_code=404, detail={"message": "Item not found"})
+
+
+@app.post("/files/")
+async def check_file(uploadFile: UploadFile = File(), token: str = Form()):
+    return {
+        "token": token,
+        # "uploadFileSize": len(await upload_file.read()),
+        "uploadFileName": uploadFile.filename,
+        "uploadFileContentType": uploadFile.content_type,
+    }
+
+
+@app.get("/findall")
+async def fetch_data():
+
+    await database.connect()
+
+    query = "SELECT * FROM REGIONS"
+    results = await database.fetch_all(query=query)
+
+    await database.disconnect()
+
+    return results
