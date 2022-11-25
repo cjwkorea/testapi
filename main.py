@@ -1,10 +1,10 @@
+import base64
 from databases import Database
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-
 
 # https://apis.data.go.kr/6260000/AttractionService/getAttractionKr?serviceKey=L4O6Jd5locofQV0Sa674EwMQ4GyHi380DNlzkWVMQLw8O2LvzNMvBKe1RxTj4jssgmQKPrDvinJFtSOIs9KmbA%3D%3D&pageNo=1&numOfRows=10&resultType=json
 
@@ -18,6 +18,14 @@ class ResponseDTO(BaseModel):
 class Cat(BaseModel):
     name: str
     id: int = 0
+
+
+class RequestInsertRegionDTO(BaseModel):
+    regionName: str
+
+
+class RequestUpdateRegionDTO(BaseModel):
+    regionName: str
 
 
 app = FastAPI()
@@ -85,3 +93,78 @@ async def fetch_data():
     await database.disconnect()
 
     return results
+
+
+@app.post("/insert")
+async def insert_data(requestInsertRegionDTO: RequestInsertRegionDTO):
+
+    await database.connect()
+
+    error = False
+
+    try:
+        query = f"""INSERT INTO REGIONS
+                      (region_name)
+                    values
+                      ('{requestInsertRegionDTO.regionName}')"""
+        results = await database.execute(query)
+    except:
+        error = True
+    finally:
+        await database.disconnect()
+
+    if error:
+        return "에러발생"
+
+    return results
+
+
+@app.put("/update/{id}")
+async def update_data(id: int, requestUpdateRegionDTO: RequestUpdateRegionDTO):
+
+    await database.connect()
+
+    error = False
+
+    try:
+        query = f"""UPDATE REGIONS
+                    SET REGION_NAME='{requestUpdateRegionDTO.regionName}'
+                    WHERE REGION_ID={id}"""
+        results = await database.execute(query)
+    except:
+        error = True
+    finally:
+        await database.disconnect()
+
+    if error:
+        return "에러발생"
+
+    return results
+
+
+@app.delete("/delete/{id}")
+async def update_data(id: int):
+
+    await database.connect()
+
+    error = False
+
+    try:
+        query = f"""DELETE FROM REGIONS
+                    WHERE REGION_ID={id}"""
+        results = await database.execute(query)
+    except:
+        error = True
+    finally:
+        await database.disconnect()
+
+    if error:
+        return "에러발생"
+
+    return results
+
+
+@app.post("/files-base64/")
+async def bas64_file(uploadFile: str = Form(), token: str = Form()):
+    # print(uploadFile)
+    return {"token": token, "uploadFile": uploadFile}
